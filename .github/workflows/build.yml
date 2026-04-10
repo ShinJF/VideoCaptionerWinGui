@@ -1,73 +1,30 @@
-name: Build Windows Installer
+name: Build Windows EXE
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version (e.g., v1.4.1)'
-        required: false
-        default: '1.4.1'
 
 jobs:
   build:
     runs-on: windows-latest
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           
-      - name: Install dependencies
+      - name: Install deps
         run: |
           pip install -e ".[gui]"
-          
-      - name: Install PyInstaller
-        run: |
           pip install pyinstaller
           
-      - name: Build executable
+      - name: Build
         run: |
           pyinstaller --onedir --windowed --name VideoCaptioner --add-data "resource;resource" --hidden-import=PyQt5 --hidden-import=PyQt5.QtCore --hidden-import=PyQt5.QtGui --hidden-import=PyQt5.QtWidgets --collect-all PyQt5 --collect-all PyQt-Fluent-Widgets videocaptioner/ui/main.py
           
-      - name: Download Inno Setup
-        run: |
-          curl -L -o innosetup.exe "https://files.jrsoftware.org/is/6/innosetup-6.2.2.exe"
-          
-      - name: Create Installer Script
-        run: |
-          $version = "${{ github.event.inputs.version }}"
-          if ($version -eq "") { $version = "1.4.1" }
-          $script = @"
-          [Setup]
-          AppName=VideoCaptioner
-          AppVersion=$version
-          AppPublisher=Weifeng
-          DefaultDirName={autopf}\VideoCaptioner
-          OutputBaseFilename=VideoCaptioner-Setup-$version
-          Compression=lzma2
-          [Files]
-          Source: "dist\VideoCaptioner\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
-          [Icons]
-          Name: "{autodesktop}\VideoCaptioner"; Filename: "{app}\VideoCaptioner.exe"
-          "@
-          $script | Out-File -FilePath "setup.iss" -Encoding UTF8
-          
-      - name: Build Installer
-        run: |
-          .\innosetup.exe /cc setup.iss
-          
-      - name: Upload Installer
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: VideoCaptioner-Setup
-          path: Output/*.exe
-          
-      - name: Upload portable
-        uses: actions/upload-artifact@v4
-        with:
-          name: VideoCaptioner-portable
+          name: VideoCaptioner
           path: dist/VideoCaptioner/
